@@ -121,7 +121,7 @@ test('diner dashboard', async ({ page }) => {
   await expect(page.locator('tbody')).toContainText('2433-06-07T06:14:000Z');
 });
 
-test('franchise dashboard', async ({ page }) => {
+test('franchise dashboard, delete store', async ({ page }) => {
   // mock this user's franchises
   await page.route('*/**/api/franchise/101', async (route) => {
     console.log("in franchise routing");
@@ -185,6 +185,18 @@ test('franchise dashboard', async ({ page }) => {
   await expect(page.getByRole('heading')).toContainText('Planet Char');
   await expect(page.getByRole('button', { name: 'Create store' })).toBeVisible();
   await expect(page.locator('tbody')).toContainText('The Pizza Trench');
+
+  // mock delete store
+  await page.route('*/**/api/franchise/12/store/190', async (route) => {
+    console.log('delete franchise route');
+    expect(route.request().method()).toBe('DELETE');
+    const deleteFranchiseRes = {message : 'store deleted'};
+    await route.fulfill({ json:deleteFranchiseRes });
+  });
+
+  await page.getByRole('row', { name: 'The Pizza Trench 431 ₿ Close' }).getByRole('button').click();
+  await expect(page.getByRole('main')).toContainText('Close');
+  await expect(page.getByRole('heading')).toContainText('Sorry to see you go');
 });
 
 test('purchase with login', async ({ page }) => {
@@ -282,6 +294,50 @@ test('purchase with login', async ({ page }) => {
 
   // Check balance
   await expect(page.getByText('0.008')).toBeVisible();
+
+  // mock out verify response
+  await page.route('*/**/api/order/verify', async (route) => {
+    expect(route.request().method()).toBe('POST');
+    const verifyRes = {
+      message: 'valid',
+      payload: {
+        vendor: {
+          id : 'jwt-headquarters',
+          name : "JWT Headquarters"
+        },
+        diner : {
+          id : 3,
+          name : 'Kai Chen',
+          email : 'd@jwt.com'
+        },
+        order : {
+          items : [
+            {
+              menuId: 1,
+              description: 'Veggie',
+              price : 0.0038
+            },
+            {
+              menuId: 2,
+              description : 'Pepperoni',
+              price: 0.0042
+            }
+          ],
+          storeId: '4',
+          franchiseId: 2,
+          id: 23
+        }
+      }
+    };
+    await route.fulfill({ json:verifyRes });
+  }); 
+
+  // Verify stuff
+  await page.getByRole('button', { name: 'Verify' }).click();
+  await expect(page.locator('h3')).toContainText('JWT Pizza - valid');
+  await expect(page.getByText('{ "vendor": { "id": "jwt-')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Close' })).toBeVisible();
+  await page.getByRole('button', { name: 'Close' }).click();
 });
 
 // My tests
