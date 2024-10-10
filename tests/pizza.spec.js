@@ -20,7 +20,30 @@ test('history page',  async ({ page }) => {
   await expect(page.getByRole('main')).toContainText('However, it was the Romans who truly popularized pizza-like dishes. They would top their flatbreads with various ingredients such as cheese, honey, and bay leaves.');
 });
 
+// response: { user: { id: 2, name: 'pizza diner', email: 'd@jwt.com', roles: [{ role: 'diner' }] }, token: 'tttttt' },
 test('register new user', async ({ page }) => {
+  // mock register and logout
+  await page.route('*/**/api/auth', async (route) => {
+    if (route.request().method() == 'POST') {
+      const registerRes = {
+        user : {
+          id : 101,
+          name: 'James Raynor',
+          email: 'raynor@raiders.rvl',
+          roles: [{role : 'diner'}]
+        },
+        token: 'overdrive'
+      }
+      await route.fulfill({ json:registerRes });
+    }
+    else if (route.request().method() == 'DELETE') {
+      const logoutRes = {
+        message : 'logout successful'
+      }
+      await route.fulfill({ json:logoutRes });
+    }
+  });
+
   await page.goto('http://localhost:5173/');
   await page.getByRole('link', { name: 'Register' }).click();
   await page.getByPlaceholder('Full name').fill('James Raynor');
@@ -32,7 +55,6 @@ test('register new user', async ({ page }) => {
   await expect(page.getByRole('link', { name: 'JR' })).toBeVisible();
   await expect(page.getByLabel('Global')).toContainText('JR');
   await page.getByRole('link', { name: 'Logout' }).click();
-
 });
 
 test('diner dashboard', async ({ page }) => {
