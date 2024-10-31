@@ -10,8 +10,8 @@ jobs:
     name: Build
     runs-on: ubuntu-latest
     environment:
-      name: production
-      url: https://pizza.pizza329.click
+      name: staging
+      url: https://stage-pizza.pizza329.click
     outputs:
       version: ${{ steps.set_version.outputs.version }}
     steps:
